@@ -3,7 +3,7 @@ import HorizonLine from './horizontal-line.js'
 import NightMode from './night-mode.js'
 import { getRandomNum } from './utils.js'
 import Obstacle from './obstacle.js'
-import { config } from './constants.js'
+import { assets, config } from './constants.js'
 
 export default class Horizon {
   /**
@@ -41,7 +41,7 @@ export default class Horizon {
    */
   init() {
     this.addCloud()
-    this.horizonLine = new HorizonLine(this.canvas, this.spritePos.HORIZON)
+    this.horizonLine = new HorizonLine(this.canvas)
     this.nightMode = new NightMode(
       this.canvas,
       this.spritePos.MOON,
@@ -161,17 +161,16 @@ export default class Horizon {
     ) {
       this.addNewObstacle(currentSpeed)
     } else {
-      var obstacleSpritePos = this.spritePos[obstacleType.type]
+      const obstacleImage = assets.obstacles[obstacleType.type]
 
       this.obstacles.push(
         new Obstacle(
           this.canvasCtx,
           obstacleType,
-          obstacleSpritePos,
+          obstacleImage,
           this.dimensions,
           this.gapCoefficient,
           currentSpeed,
-          obstacleType.width,
         ),
       )
 

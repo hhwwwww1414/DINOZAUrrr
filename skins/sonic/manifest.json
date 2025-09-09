@@ -1,0 +1,17 @@
+{
+  "name": "Sonic",
+  "character": {
+    "idle": "character/SonicIdle.png",
+    "run": ["character/SonicRun1.png", "character/SonicRun2.png"],
+    "dead": "character/SonicDeaath.png"
+  },
+  "ground": "ground/SonicDirt.png",
+  "obstacles": {
+    "SMALL": "obstacles/SonicSmallEnemy.png",
+    "BIG": "obstacles/SonicBigEnemy.png",
+    "MIDDLE": "obstacles/SonicMiddleEnemy.png",
+    "TALL_SMALL": "obstacles/SonicTallSmallEnemy.png",
+    "TALL_MIDDLE": "obstacles/SonicTallMiddleEnemy.png",
+    "TALL_BIG": "obstacles/SonicTallBigEnemy.png"
+  }
+}

@@ -25,6 +25,7 @@ import DistanceMeter from './distance-meter.js'
 import Horizon from './horizon.js'
 import GameOverPanel from './game-panel.js'
 import Trex from './trex.js'
+import Obstacle from './obstacle.js'
 
 export default class Runner {
   /**
@@ -86,6 +87,9 @@ export default class Runner {
     // Images.
     this.images = {}
     this.imagesLoaded = 0
+
+    this.manifestCache = {}
+    this.defaultObstacleTypes = Obstacle.types.slice()
 
     if (this.isDisabled()) {
       this.setupDisabledRunner()
@@ -176,12 +180,108 @@ export default class Runner {
       this.spriteDef = spriteDefinition.LDPI
     }
 
-    if (assets.imageSprite.complete) {
-      this.init()
-    } else {
-      // If the images are not yet loaded, add a listener.
-      assets.imageSprite.addEventListener(events.LOAD, this.init.bind(this))
+    const spriteReady = new Promise((resolve) => {
+      if (assets.imageSprite.complete) {
+        resolve()
+      } else {
+        assets.imageSprite.addEventListener(events.LOAD, resolve)
+      }
+    })
+
+    spriteReady.then(() => {
+      const saved = JSON.parse(localStorage.getItem('skinSelection') || '{}')
+      const selection = {
+        character: saved.character || 'sonic',
+        ground: saved.ground || 'sonic',
+        obstacles: saved.obstacles || 'sonic',
+      }
+      this.setSkin(selection).then(() => this.init())
+    })
+  }
+
+  async loadManifest(name) {
+    if (!this.manifestCache[name]) {
+      const res = await fetch(`skins/${name}/manifest.json`)
+      this.manifestCache[name] = await res.json()
     }
+    return this.manifestCache[name]
+  }
+
+  async setSkin(selection) {
+    const parts = selection || {}
+    const promises = []
+
+    const loadImage = (src, skin) =>
+      new Promise((resolve) => {
+        const img = new Image()
+        img.src = `skins/${skin}/` + src
+        img.addEventListener(events.LOAD, () => resolve(img))
+      })
+
+    if (parts.character) {
+      promises.push(
+        (async () => {
+          const manifest = await this.loadManifest(parts.character)
+          const char = manifest.character
+          const idle = await loadImage(char.idle, parts.character)
+          const runFrames = await Promise.all(
+            char.run.map((p) => loadImage(p, parts.character)),
+          )
+          const dead = await loadImage(char.dead, parts.character)
+          assets.character = { idle, run: runFrames, dead }
+        })(),
+      )
+    }
+
+    if (parts.ground) {
+      promises.push(
+        (async () => {
+          const manifest = await this.loadManifest(parts.ground)
+          assets.ground = await loadImage(manifest.ground, parts.ground)
+        })(),
+      )
+    }
+
+    if (parts.obstacles) {
+      promises.push(
+        (async () => {
+          const manifest = await this.loadManifest(parts.obstacles)
+          assets.obstacles = {}
+          await Promise.all(
+            Object.entries(manifest.obstacles || {}).map(
+              ([type, src]) =>
+                loadImage(src, parts.obstacles).then((img) => {
+                  assets.obstacles[type] = img
+                }),
+            ),
+          )
+          Obstacle.types = this.defaultObstacleTypes.filter(
+            (t) => assets.obstacles[t.type],
+          )
+        })(),
+      )
+    }
+
+    await Promise.all(promises)
+
+    Trex.animFrames = {
+      WAITING: { frames: [assets.character.idle], msPerFrame: 1000 / 3 },
+      RUNNING: { frames: assets.character.run, msPerFrame: 1000 / 12 },
+      CRASHED: { frames: [assets.character.dead], msPerFrame: 1000 / 60 },
+      JUMPING: { frames: [assets.character.run[0]], msPerFrame: 1000 / 60 },
+      DUCKING: { frames: assets.character.run, msPerFrame: 1000 / 8 },
+    }
+
+    if (this.tRex) {
+      this.tRex.images = assets.character
+      this.tRex.update(0, this.tRex.status)
+    }
+    if (this.horizon) {
+      this.horizon.obstacles = []
+      this.horizon.horizonLine.draw()
+    }
+
+    localStorage.setItem('skinSelection', JSON.stringify(parts))
   }
 
   /**
@@ -271,7 +371,7 @@ export default class Runner {
     )
 
     // Draw t-rex
-    this.tRex = new Trex(this.canvas, this.spriteDef.TREX)
+    this.tRex = new Trex(this.canvas, assets.character)
 
     this.outerContainerEl.appendChild(this.containerEl)
 
@@ -340,7 +440,7 @@ export default class Runner {
         this.distanceMeter.update(0, Math.ceil(this.distanceRan))
         this.stop()
       } else {
-        this.tRex.draw(0, 0)
+        this.tRex.draw(assets.character.idle)
       }
 
       // Game over panel.
