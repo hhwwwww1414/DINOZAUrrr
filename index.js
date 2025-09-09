@@ -20,7 +20,6 @@ async function listSkins() {
     .map((h) => h.replace(/\/$/, ''))
     .filter((name) => name !== 'skins.json')
 }
-
 async function setupSkinMenu(runner) {
   const btn = document.getElementById('skins-btn')
   const panel = document.getElementById('skins-panel')

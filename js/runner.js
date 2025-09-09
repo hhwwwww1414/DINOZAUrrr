@@ -172,6 +172,8 @@ export default class Runner {
    * definition.
    */
   loadImages() {
+    const promises = []
+
     if (IS_HIDPI) {
       assets.imageSprite = document.getElementById('offline-resources-2x')
       this.spriteDef = spriteDefinition.HDPI
@@ -179,7 +181,6 @@ export default class Runner {
       assets.imageSprite = document.getElementById('offline-resources-1x')
       this.spriteDef = spriteDefinition.LDPI
     }
-
     const spriteReady = new Promise((resolve) => {
       if (assets.imageSprite.complete) {
         resolve()
@@ -198,7 +199,24 @@ export default class Runner {
       this.setSkin(selection).then(() => this.init())
     })
   }
+    const spriteReady = new Promise((resolve) => {
+      if (assets.imageSprite.complete) {
+        resolve()
+      } else {
+        assets.imageSprite.addEventListener(events.LOAD, resolve)
+      }
+    })
 
+    spriteReady.then(() => {
+      const saved = JSON.parse(localStorage.getItem('skinSelection') || '{}')
+      const selection = {
+        character: saved.character || 'sonic',
+        ground: saved.ground || 'sonic',
+        obstacles: saved.obstacles || 'sonic',
+      }
+      this.setSkin(selection).then(() => this.init())
+    })
+  }
   async loadManifest(name) {
     if (!this.manifestCache[name]) {
       const res = await fetch(`skins/${name}/manifest.json`)
