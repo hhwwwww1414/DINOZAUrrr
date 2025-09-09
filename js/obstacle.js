@@ -1,33 +1,24 @@
-import { assets } from './constants.js'
 import CollisionBox from './collision-box.js'
 import { getRandomNum } from './utils.js'
-import { IS_HIDPI, IS_MOBILE, FPS } from './config.js'
+import { IS_MOBILE, FPS } from './config.js'
 
 /**
  * Obstacle.
  * @param {HTMLCanvasCtx} canvasCtx
  * @param {Obstacle.type} type
- * @param {Object} spritePos Obstacle position in sprite.
+ * @param {HTMLImageElement} image Obstacle image.
  * @param {Object} dimensions
  * @param {number} gapCoefficient Mutipler in determining the gap.
  * @param {number} speed
  * @param {number} opt_xOffset
  */
 export default class Obstacle {
-  constructor(
-    canvasCtx,
-    type,
-    spriteImgPos,
-    dimensions,
-    gapCoefficient,
-    speed,
-    opt_xOffset,
-  ) {
+  constructor(canvasCtx, type, image, dimensions, gapCoefficient, speed, opt_xOffset) {
     this.canvasCtx = canvasCtx
-    this.spritePos = spriteImgPos
+    this.image = image
     this.typeConfig = type
     this.gapCoefficient = gapCoefficient
-    this.size = getRandomNum(1, Obstacle.MAX_OBSTACLE_LENGTH)
+    this.size = 1
     this.dimensions = dimensions
     this.remove = false
     this.xPos = dimensions.WIDTH + (opt_xOffset || 0)
@@ -51,12 +42,7 @@ export default class Obstacle {
   init(speed) {
     this.cloneCollisionBoxes()
 
-    // Only allow sizing if we're at the right speed.
-    if (this.size > 1 && this.typeConfig.multipleSpeed > speed) {
-      this.size = 1
-    }
-
-    this.width = this.typeConfig.width * this.size
+    this.width = this.typeConfig.width
 
     // Check if obstacle can be positioned at various heights.
     if (Array.isArray(this.typeConfig.yPos)) {
@@ -69,20 +55,6 @@ export default class Obstacle {
     }
 
     this.draw()
-
-    // Make collision box adjustments,
-    // Central box is adjusted to the size as one box.
-    //      ____        ______        ________
-    //    _|   |-|    _|     |-|    _|       |-|
-    //   | |<->| |   | |<--->| |   | |<----->| |
-    //   | | 1 | |   | |  2  | |   | |   3   | |
-    //   |_|___|_|   |_|_____|_|   |_|_______|_|
-    //
-    if (this.size > 1) {
-      this.collisionBoxes[1].width =
-        this.width - this.collisionBoxes[0].width - this.collisionBoxes[2].width
-      this.collisionBoxes[2].x = this.width - this.collisionBoxes[2].width
-    }
 
     // For obstacles that go at a different speed from the horizon.
     if (this.typeConfig.speedOffset) {
@@ -99,32 +71,11 @@ export default class Obstacle {
    * Draw and crop based on size.
    */
   draw() {
-    var sourceWidth = this.typeConfig.width
-    var sourceHeight = this.typeConfig.height
-
-    if (IS_HIDPI) {
-      sourceWidth = sourceWidth * 2
-      sourceHeight = sourceHeight * 2
-    }
-
-    // X position in sprite.
-    var sourceX =
-      sourceWidth * this.size * (0.5 * (this.size - 1)) + this.spritePos.x
-
-    // Animation frames.
-    if (this.currentFrame > 0) {
-      sourceX += sourceWidth * this.currentFrame
-    }
-
     this.canvasCtx.drawImage(
-      assets.imageSprite,
-      sourceX,
-      this.spritePos.y,
-      sourceWidth * this.size,
-      sourceHeight,
+      this.image,
       this.xPos,
       this.yPos,
-      this.typeConfig.width * this.size,
+      this.typeConfig.width,
       this.typeConfig.height,
     )
   }
@@ -222,51 +173,63 @@ Obstacle.MAX_OBSTACLE_LENGTH = 3
  */
 Obstacle.types = [
   {
-    type: 'CACTUS_SMALL',
+    type: 'SMALL',
     width: 17,
     height: 35,
     yPos: 105,
     multipleSpeed: 4,
     minGap: 120,
     minSpeed: 0,
-    collisionBoxes: [
-      new CollisionBox(0, 7, 5, 27),
-      new CollisionBox(4, 0, 6, 34),
-      new CollisionBox(10, 4, 7, 14),
-    ],
+    collisionBoxes: [new CollisionBox(0, 0, 17, 35)],
   },
   {
-    type: 'CACTUS_LARGE',
+    type: 'BIG',
+    width: 51,
+    height: 35,
+    yPos: 105,
+    multipleSpeed: 4,
+    minGap: 120,
+    minSpeed: 0,
+    collisionBoxes: [new CollisionBox(0, 0, 51, 35)],
+  },
+  {
+    type: 'MIDDLE',
+    width: 34,
+    height: 35,
+    yPos: 105,
+    multipleSpeed: 4,
+    minGap: 120,
+    minSpeed: 0,
+    collisionBoxes: [new CollisionBox(0, 0, 34, 35)],
+  },
+  {
+    type: 'TALL_SMALL',
     width: 25,
     height: 50,
     yPos: 90,
-    multipleSpeed: 7,
+    multipleSpeed: 4,
     minGap: 120,
     minSpeed: 0,
-    collisionBoxes: [
-      new CollisionBox(0, 12, 7, 38),
-      new CollisionBox(8, 0, 7, 49),
-      new CollisionBox(13, 10, 10, 38),
-    ],
+    collisionBoxes: [new CollisionBox(0, 0, 25, 50)],
   },
   {
-    type: 'PTERODACTYL',
-    width: 46,
-    height: 40,
-    yPos: [100, 75, 50], // Variable height.
-    yPosMobile: [100, 50], // Variable height mobile.
-    multipleSpeed: 999,
-    minSpeed: 8.5,
-    minGap: 150,
-    collisionBoxes: [
-      new CollisionBox(15, 15, 16, 5),
-      new CollisionBox(18, 21, 24, 6),
-      new CollisionBox(2, 14, 4, 3),
-      new CollisionBox(6, 10, 4, 7),
-      new CollisionBox(10, 8, 6, 9),
-    ],
-    numFrames: 2,
-    frameRate: 1000 / 6,
-    speedOffset: 0.8,
+    type: 'TALL_MIDDLE',
+    width: 50,
+    height: 50,
+    yPos: 90,
+    multipleSpeed: 4,
+    minGap: 120,
+    minSpeed: 0,
+    collisionBoxes: [new CollisionBox(0, 0, 50, 50)],
+  },
+  {
+    type: 'TALL_BIG',
+    width: 75,
+    height: 50,
+    yPos: 90,
+    multipleSpeed: 4,
+    minGap: 120,
+    minSpeed: 0,
+    collisionBoxes: [new CollisionBox(0, 0, 75, 50)],
   },
 ]

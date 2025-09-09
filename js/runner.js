@@ -168,6 +168,8 @@ export default class Runner {
    * definition.
    */
   loadImages() {
+    const promises = []
+
     if (IS_HIDPI) {
       assets.imageSprite = document.getElementById('offline-resources-2x')
       this.spriteDef = spriteDefinition.HDPI
@@ -176,12 +178,65 @@ export default class Runner {
       this.spriteDef = spriteDefinition.LDPI
     }
 
-    if (assets.imageSprite.complete) {
-      this.init()
-    } else {
-      // If the images are not yet loaded, add a listener.
-      assets.imageSprite.addEventListener(events.LOAD, this.init.bind(this))
+    promises.push(
+      new Promise((resolve) => {
+        if (assets.imageSprite.complete) {
+          resolve()
+        } else {
+          assets.imageSprite.addEventListener(events.LOAD, resolve)
+        }
+      }),
+    )
+
+    // Character frames
+    assets.character.idle = new Image()
+    assets.character.idle.src = 'Sonic/SonicCharacter/SonicIdle.png'
+    assets.character.run = [new Image(), new Image()]
+    assets.character.run[0].src = 'Sonic/SonicCharacter/SonicRun1.png'
+    assets.character.run[1].src = 'Sonic/SonicCharacter/SonicRun2.png'
+    assets.character.dead = new Image()
+    assets.character.dead.src = 'Sonic/SonicCharacter/SonicDeaath.png'
+
+    ;[assets.character.idle, assets.character.run[0], assets.character.run[1], assets.character.dead].forEach(
+      (img) =>
+        promises.push(
+          new Promise((resolve) => img.addEventListener(events.LOAD, resolve)),
+        ),
+    )
+
+    // Ground
+    assets.ground = new Image()
+    assets.ground.src = 'Sonic/SonicDirt/SonicDirt.png'
+    promises.push(
+      new Promise((resolve) => assets.ground.addEventListener(events.LOAD, resolve)),
+    )
+
+    // Obstacles
+    const obstaclePaths = {
+      SMALL: 'Sonic/SonicEnemy/SonicSmallEnemy.png',
+      BIG: 'Sonic/SonicEnemy/SonicBigEnemy.png',
+      MIDDLE: 'Sonic/SonicEnemy/SonicMiddleEnemy.png',
+      TALL_SMALL: 'Sonic/SonicEnemy/SonicTallSmallEnemy.png',
+      TALL_MIDDLE: 'Sonic/SonicEnemy/SonicTallMiddleEnemy.png',
+      TALL_BIG: 'Sonic/SonicEnemy/SonicTallBigEnemy.png',
     }
+    Object.keys(obstaclePaths).forEach((key) => {
+      const img = new Image()
+      img.src = obstaclePaths[key]
+      assets.obstacles[key] = img
+      promises.push(new Promise((resolve) => img.addEventListener(events.LOAD, resolve)))
+    })
+
+    Promise.all(promises).then(() => {
+      Trex.animFrames = {
+        WAITING: { frames: [assets.character.idle], msPerFrame: 1000 / 3 },
+        RUNNING: { frames: assets.character.run, msPerFrame: 1000 / 12 },
+        CRASHED: { frames: [assets.character.dead], msPerFrame: 1000 / 60 },
+        JUMPING: { frames: [assets.character.run[0]], msPerFrame: 1000 / 60 },
+        DUCKING: { frames: assets.character.run, msPerFrame: 1000 / 8 },
+      }
+      this.init()
+    })
   }
 
   /**
@@ -271,7 +326,7 @@ export default class Runner {
     )
 
     // Draw t-rex
-    this.tRex = new Trex(this.canvas, this.spriteDef.TREX)
+    this.tRex = new Trex(this.canvas, assets.character)
 
     this.outerContainerEl.appendChild(this.containerEl)
 
@@ -340,7 +395,7 @@ export default class Runner {
         this.distanceMeter.update(0, Math.ceil(this.distanceRan))
         this.stop()
       } else {
-        this.tRex.draw(0, 0)
+        this.tRex.draw(assets.character.idle)
       }
 
       // Game over panel.

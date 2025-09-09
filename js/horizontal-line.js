@@ -9,16 +9,13 @@ export default class HorizonLine {
    * @param {Object} spritePos Horizon position in sprite.
    * @constructor
    */
-  constructor(canvas, spritePos) {
+  constructor(canvas, spritePos = { x: 0, y: 0 }) {
     this.spritePos = spritePos
     this.canvas = canvas
     this.canvasCtx = canvas.getContext('2d')
     this.sourceDimensions = {}
     this.dimensions = HorizonLine.dimensions
-    this.sourceXPos = [
-      this.spritePos.x,
-      this.spritePos.x + this.dimensions.WIDTH,
-    ]
+    this.sourceXPos = [0, this.dimensions.WIDTH]
     this.xPos = []
     this.yPos = 0
     this.bumpThreshold = 0.5
@@ -59,9 +56,9 @@ export default class HorizonLine {
    */
   draw() {
     this.canvasCtx.drawImage(
-      assets.imageSprite,
+      assets.ground,
       this.sourceXPos[0],
-      this.spritePos.y,
+      0,
       this.sourceDimensions.WIDTH,
       this.sourceDimensions.HEIGHT,
       this.xPos[0],
@@ -71,9 +68,9 @@ export default class HorizonLine {
     )
 
     this.canvasCtx.drawImage(
-      assets.imageSprite,
+      assets.ground,
       this.sourceXPos[1],
-      this.spritePos.y,
+      0,
       this.sourceDimensions.WIDTH,
       this.sourceDimensions.HEIGHT,
       this.xPos[1],
@@ -98,7 +95,7 @@ export default class HorizonLine {
     if (this.xPos[line1] <= -this.dimensions.WIDTH) {
       this.xPos[line1] += this.dimensions.WIDTH * 2
       this.xPos[line2] = this.xPos[line1] - this.dimensions.WIDTH
-      this.sourceXPos[line1] = this.getRandomType() + this.spritePos.x
+      this.sourceXPos[line1] = this.getRandomType()
     }
   }
 
