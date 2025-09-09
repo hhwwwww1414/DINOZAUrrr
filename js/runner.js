@@ -25,6 +25,7 @@ import DistanceMeter from './distance-meter.js'
 import Horizon from './horizon.js'
 import GameOverPanel from './game-panel.js'
 import Trex from './trex.js'
+import Obstacle from './obstacle.js'
 
 export default class Runner {
   /**
@@ -86,6 +87,9 @@ export default class Runner {
     // Images.
     this.images = {}
     this.imagesLoaded = 0
+
+    this.manifestCache = {}
+    this.defaultObstacleTypes = Obstacle.types.slice()
 
     if (this.isDisabled()) {
       this.setupDisabledRunner()
@@ -177,66 +181,108 @@ export default class Runner {
       assets.imageSprite = document.getElementById('offline-resources-1x')
       this.spriteDef = spriteDefinition.LDPI
     }
-
-    promises.push(
-      new Promise((resolve) => {
-        if (assets.imageSprite.complete) {
-          resolve()
-        } else {
-          assets.imageSprite.addEventListener(events.LOAD, resolve)
-        }
-      }),
-    )
-
-    // Character frames
-    assets.character.idle = new Image()
-    assets.character.idle.src = 'Sonic/SonicCharacter/SonicIdle.png'
-    assets.character.run = [new Image(), new Image()]
-    assets.character.run[0].src = 'Sonic/SonicCharacter/SonicRun1.png'
-    assets.character.run[1].src = 'Sonic/SonicCharacter/SonicRun2.png'
-    assets.character.dead = new Image()
-    assets.character.dead.src = 'Sonic/SonicCharacter/SonicDeaath.png'
-
-    ;[assets.character.idle, assets.character.run[0], assets.character.run[1], assets.character.dead].forEach(
-      (img) =>
-        promises.push(
-          new Promise((resolve) => img.addEventListener(events.LOAD, resolve)),
-        ),
-    )
-
-    // Ground
-    assets.ground = new Image()
-    assets.ground.src = 'Sonic/SonicDirt/SonicDirt.png'
-    promises.push(
-      new Promise((resolve) => assets.ground.addEventListener(events.LOAD, resolve)),
-    )
-
-    // Obstacles
-    const obstaclePaths = {
-      SMALL: 'Sonic/SonicEnemy/SonicSmallEnemy.png',
-      BIG: 'Sonic/SonicEnemy/SonicBigEnemy.png',
-      MIDDLE: 'Sonic/SonicEnemy/SonicMiddleEnemy.png',
-      TALL_SMALL: 'Sonic/SonicEnemy/SonicTallSmallEnemy.png',
-      TALL_MIDDLE: 'Sonic/SonicEnemy/SonicTallMiddleEnemy.png',
-      TALL_BIG: 'Sonic/SonicEnemy/SonicTallBigEnemy.png',
-    }
-    Object.keys(obstaclePaths).forEach((key) => {
-      const img = new Image()
-      img.src = obstaclePaths[key]
-      assets.obstacles[key] = img
-      promises.push(new Promise((resolve) => img.addEventListener(events.LOAD, resolve)))
-    })
-
-    Promise.all(promises).then(() => {
-      Trex.animFrames = {
-        WAITING: { frames: [assets.character.idle], msPerFrame: 1000 / 3 },
-        RUNNING: { frames: assets.character.run, msPerFrame: 1000 / 12 },
-        CRASHED: { frames: [assets.character.dead], msPerFrame: 1000 / 60 },
-        JUMPING: { frames: [assets.character.run[0]], msPerFrame: 1000 / 60 },
-        DUCKING: { frames: assets.character.run, msPerFrame: 1000 / 8 },
+    const spriteReady = new Promise((resolve) => {
+      if (assets.imageSprite.complete) {
+        resolve()
+      } else {
+        assets.imageSprite.addEventListener(events.LOAD, resolve)
       }
-      this.init()
     })
+
+    spriteReady.then(() => {
+      const saved = JSON.parse(localStorage.getItem('skinSelection') || '{}')
+      const selection = {
+        character: saved.character || 'sonic',
+        ground: saved.ground || 'sonic',
+        obstacles: saved.obstacles || 'sonic',
+      }
+      this.setSkin(selection).then(() => this.init())
+    })
+  }
+
+  async loadManifest(name) {
+    if (!this.manifestCache[name]) {
+      const res = await fetch(`skins/${name}/manifest.json`)
+      this.manifestCache[name] = await res.json()
+    }
+    return this.manifestCache[name]
+  }
+
+  async setSkin(selection) {
+    const parts = selection || {}
+    const promises = []
+
+    const loadImage = (src, skin) =>
+      new Promise((resolve) => {
+        const img = new Image()
+        img.src = `skins/${skin}/` + src
+        img.addEventListener(events.LOAD, () => resolve(img))
+      })
+
+    if (parts.character) {
+      promises.push(
+        (async () => {
+          const manifest = await this.loadManifest(parts.character)
+          const char = manifest.character
+          const idle = await loadImage(char.idle, parts.character)
+          const runFrames = await Promise.all(
+            char.run.map((p) => loadImage(p, parts.character)),
+          )
+          const dead = await loadImage(char.dead, parts.character)
+          assets.character = { idle, run: runFrames, dead }
+        })(),
+      )
+    }
+
+    if (parts.ground) {
+      promises.push(
+        (async () => {
+          const manifest = await this.loadManifest(parts.ground)
+          assets.ground = await loadImage(manifest.ground, parts.ground)
+        })(),
+      )
+    }
+
+    if (parts.obstacles) {
+      promises.push(
+        (async () => {
+          const manifest = await this.loadManifest(parts.obstacles)
+          assets.obstacles = {}
+          await Promise.all(
+            Object.entries(manifest.obstacles || {}).map(
+              ([type, src]) =>
+                loadImage(src, parts.obstacles).then((img) => {
+                  assets.obstacles[type] = img
+                }),
+            ),
+          )
+          Obstacle.types = this.defaultObstacleTypes.filter(
+            (t) => assets.obstacles[t.type],
+          )
+        })(),
+      )
+    }
+
+    await Promise.all(promises)
+
+    Trex.animFrames = {
+      WAITING: { frames: [assets.character.idle], msPerFrame: 1000 / 3 },
+      RUNNING: { frames: assets.character.run, msPerFrame: 1000 / 12 },
+      CRASHED: { frames: [assets.character.dead], msPerFrame: 1000 / 60 },
+      JUMPING: { frames: [assets.character.run[0]], msPerFrame: 1000 / 60 },
+      DUCKING: { frames: assets.character.run, msPerFrame: 1000 / 8 },
+    }
+
+    if (this.tRex) {
+      this.tRex.images = assets.character
+      this.tRex.update(0, this.tRex.status)
+    }
+    if (this.horizon) {
+      this.horizon.obstacles = []
+      this.horizon.horizonLine.draw()
+    }
+
+    localStorage.setItem('skinSelection', JSON.stringify(parts))
   }
 
   /**
