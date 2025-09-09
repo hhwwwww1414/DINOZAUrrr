@@ -172,6 +172,8 @@ export default class Runner {
    * definition.
    */
   loadImages() {
+    const promises = []
+
     if (IS_HIDPI) {
       assets.imageSprite = document.getElementById('offline-resources-2x')
       this.spriteDef = spriteDefinition.HDPI
@@ -179,7 +181,6 @@ export default class Runner {
       assets.imageSprite = document.getElementById('offline-resources-1x')
       this.spriteDef = spriteDefinition.LDPI
     }
-
     const spriteReady = new Promise((resolve) => {
       if (assets.imageSprite.complete) {
         resolve()
