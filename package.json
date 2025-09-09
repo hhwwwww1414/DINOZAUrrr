@@ -1,0 +1,19 @@
+{
+  "name": "trex-runner",
+  "description": "A modulized t-rex-runner game for easy readability",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "serve",
+    "lint": "eslint ./js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.7.1",
+    "eslint": "^8.57.0",
+    "serve": "^14.2.2"
+  }
+}
