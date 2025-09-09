@@ -1,19 +1,19 @@
-import { assets, config, defaultDimensions } from './constants.js'
+import { config, defaultDimensions } from './constants.js'
 import CollisionBox from './collision-box.js'
-import { IS_HIDPI, FPS } from './config.js'
+import { FPS } from './config.js'
 import { getTimeStamp } from './utils.js'
 
 export default class Trex {
   /**
    * T-rex game character.
    * @param {HTMLCanvas} canvas
-   * @param {Object} spritePos Positioning within image sprite.
+   * @param {Object} images Character image frames.
    * @constructor
    */
-  constructor(canvas, spritePos) {
+  constructor(canvas, images) {
     this.canvas = canvas
     this.canvasCtx = canvas.getContext('2d')
-    this.spritePos = spritePos
+    this.images = images
     this.xPos = 0
     this.yPos = 0
     // Position when on the ground.
@@ -50,7 +50,7 @@ export default class Trex {
     this.yPos = this.groundYPos
     this.minJumpHeight = this.groundYPos - this.config.MIN_JUMP_HEIGHT
 
-    this.draw(0, 0)
+    this.draw(this.images.idle)
     this.update(0, Trex.status.WAITING)
   }
 
@@ -94,7 +94,7 @@ export default class Trex {
     if (this.status == Trex.status.WAITING) {
       this.blink(getTimeStamp())
     } else {
-      this.draw(this.currentAnimFrames[this.currentFrame], 0)
+      this.draw(this.currentAnimFrames[this.currentFrame])
     }
 
     // Update the frame position.
@@ -118,57 +118,18 @@ export default class Trex {
    * @param {number} x
    * @param {number} y
    */
-  draw(x, y) {
-    var sourceX = x
-    var sourceY = y
-    var sourceWidth =
+  draw(img) {
+    const targetWidth =
       this.ducking && this.status != Trex.status.CRASHED
         ? this.config.WIDTH_DUCK
         : this.config.WIDTH
-    var sourceHeight = this.config.HEIGHT
-
-    if (IS_HIDPI) {
-      sourceX *= 2
-      sourceY *= 2
-      sourceWidth *= 2
-      sourceHeight *= 2
-    }
-
-    // Adjustments for sprite sheet position.
-    sourceX += this.spritePos.x
-    sourceY += this.spritePos.y
-
-    // Ducking.
-    if (this.ducking && this.status != Trex.status.CRASHED) {
-      this.canvasCtx.drawImage(
-        assets.imageSprite,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight,
-        this.xPos,
-        this.yPos,
-        this.config.WIDTH_DUCK,
-        this.config.HEIGHT,
-      )
-    } else {
-      // Crashed whilst ducking. Trex is standing up so needs adjustment.
-      if (this.ducking && this.status == Trex.status.CRASHED) {
-        this.xPos++
-      }
-      // Standing / running
-      this.canvasCtx.drawImage(
-        assets.imageSprite,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight,
-        this.xPos,
-        this.yPos,
-        this.config.WIDTH,
-        this.config.HEIGHT,
-      )
-    }
+    this.canvasCtx.drawImage(
+      img,
+      this.xPos,
+      this.yPos,
+      targetWidth,
+      this.config.HEIGHT,
+    )
   }
 
   /**
@@ -186,7 +147,7 @@ export default class Trex {
     var deltaTime = time - this.animStartTime
 
     if (deltaTime >= this.blinkDelay) {
-      this.draw(this.currentAnimFrames[this.currentFrame], 0)
+      this.draw(this.currentAnimFrames[this.currentFrame])
 
       if (this.currentFrame == 1) {
         // Set new random delay to blink.
@@ -369,23 +330,23 @@ Trex.BLINK_TIMING = 7000
  */
 Trex.animFrames = {
   WAITING: {
-    frames: [44, 0],
+    frames: [],
     msPerFrame: 1000 / 3,
   },
   RUNNING: {
-    frames: [88, 132],
+    frames: [],
     msPerFrame: 1000 / 12,
   },
   CRASHED: {
-    frames: [220],
+    frames: [],
     msPerFrame: 1000 / 60,
   },
   JUMPING: {
-    frames: [0],
+    frames: [],
     msPerFrame: 1000 / 60,
   },
   DUCKING: {
-    frames: [264, 323],
+    frames: [],
     msPerFrame: 1000 / 8,
   },
 }

@@ -6,6 +6,12 @@ import { DEFAULT_WIDTH } from './config.js'
  */
 export const assets = {
   imageSprite: null,
+  /** Customizable character frames */
+  character: {},
+  /** Custom ground image */
+  ground: null,
+  /** Enemy images by type */
+  obstacles: {},
 }
 
 /**
