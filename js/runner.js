@@ -199,7 +199,24 @@ export default class Runner {
       this.setSkin(selection).then(() => this.init())
     })
   }
+    const spriteReady = new Promise((resolve) => {
+      if (assets.imageSprite.complete) {
+        resolve()
+      } else {
+        assets.imageSprite.addEventListener(events.LOAD, resolve)
+      }
+    })
 
+    spriteReady.then(() => {
+      const saved = JSON.parse(localStorage.getItem('skinSelection') || '{}')
+      const selection = {
+        character: saved.character || 'sonic',
+        ground: saved.ground || 'sonic',
+        obstacles: saved.obstacles || 'sonic',
+      }
+      this.setSkin(selection).then(() => this.init())
+    })
+  }
   async loadManifest(name) {
     if (!this.manifestCache[name]) {
       const res = await fetch(`skins/${name}/manifest.json`)
